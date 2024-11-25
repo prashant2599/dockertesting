@@ -28,7 +28,8 @@ jobs:
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag $IMAGE_TAG
 
-    - name: Send Slack notification
+    - name: Send success notification to Slack
+      if: success()
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         IMAGE_TAG: ${{ env.IMAGE_TAG }}
@@ -36,4 +37,14 @@ jobs:
       run: |
         curl -X POST -H 'Content-type: application/json' \
         --data "{\"text\":\"Docker build completed successfully on branch: $BRANCH_NAME! Built image tag: $IMAGE_TAG\"}" \
+        $SLACK_WEBHOOK_URL
+
+    - name: Send failure notification to Slack
+      if: failure()
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        BRANCH_NAME: "${GITHUB_REF##*/}"
+      run: |
+        curl -X POST -H 'Content-type: application/json' \
+        --data "{\"text\":\"⚠️ Docker build failed on branch: $BRANCH_NAME! Please check the pipeline logs for details.\"}" \
         $SLACK_WEBHOOK_URL
