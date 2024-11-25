@@ -2,7 +2,10 @@ name: Docker Image CI
 
 on:
   push:
-    branches: [ "master" ]
+    branches:
+      - master
+      - uat
+      - production
 
 jobs:
 
@@ -12,18 +15,25 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Set up Docker image tag
+    - name: Set up Docker image tag based on branch
       id: vars
-      run: echo "IMAGE_TAG=test:$(date +%s)" >> $GITHUB_ENV
+      run: |
+        if [ "${GITHUB_REF##*/}" == "production" ]; then
+          echo "IMAGE_TAG=production:$(date +%s)" >> $GITHUB_ENV
+        elif [ "${GITHUB_REF##*/}" == "uat" ]; then
+          echo "IMAGE_TAG=uat:$(date +%s)" >> $GITHUB_ENV
+        else
+          echo "IMAGE_TAG=test:$(date +%s)" >> $GITHUB_ENV
 
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag $IMAGE_TAG
-      
+
     - name: Send Slack notification
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         IMAGE_TAG: ${{ env.IMAGE_TAG }}
+        BRANCH_NAME: "${GITHUB_REF##*/}"
       run: |
         curl -X POST -H 'Content-type: application/json' \
-        --data "{\"text\":\"Docker build completed successfully on branch: master! Built image tag: $IMAGE_TAG\"}" \
+        --data "{\"text\":\"Docker build completed successfully on branch: $BRANCH_NAME! Built image tag: $IMAGE_TAG\"}" \
         $SLACK_WEBHOOK_URL
