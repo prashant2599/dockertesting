@@ -6,6 +6,17 @@ on:
       - master
       - uat
       - production
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: 'Select branch to build'
+        required: true
+        default: 'master'
+        type: choice
+        options:
+          - master
+          - uat
+          - production
 
 jobs:
 
@@ -14,13 +25,15 @@ jobs:
 
     steps:
     - uses: actions/checkout@v4
+      with:
+        ref: ${{ github.event.inputs.branch }}  # Use selected branch for checkout
 
     - name: Set up Docker image tag based on branch
       id: vars
       run: |
-        if [ "${GITHUB_REF##*/}" == "production" ]; then
+        if [ "${{ github.event.inputs.branch }}" == "production" ]; then
           echo "IMAGE_TAG=production:$(date +%s)" >> $GITHUB_ENV
-        elif [ "${GITHUB_REF##*/}" == "uat" ]; then
+        elif [ "${{ github.event.inputs.branch }}" == "uat" ]; then
           echo "IMAGE_TAG=uat:$(date +%s)" >> $GITHUB_ENV
         else
           echo "IMAGE_TAG=test:$(date +%s)" >> $GITHUB_ENV
@@ -33,7 +46,7 @@ jobs:
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         IMAGE_TAG: ${{ env.IMAGE_TAG }}
-        BRANCH_NAME: "${GITHUB_REF##*/}"
+        BRANCH_NAME: "${{ github.event.inputs.branch }}"
       run: |
         curl -X POST -H 'Content-type: application/json' \
         --data "{\"text\":\"Docker build completed successfully on branch: $BRANCH_NAME! Built image tag: $IMAGE_TAG\"}" \
@@ -43,7 +56,7 @@ jobs:
       if: failure()
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-        BRANCH_NAME: "${GITHUB_REF##*/}"
+        BRANCH_NAME: "${{ github.event.inputs.branch }}"
       run: |
         curl -X POST -H 'Content-type: application/json' \
         --data "{\"text\":\"⚠️ Docker build failed on branch: $BRANCH_NAME! Please check the pipeline logs for details.\"}" \
