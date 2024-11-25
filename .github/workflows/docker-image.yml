@@ -12,13 +12,18 @@ jobs:
     steps:
     - uses: actions/checkout@v4
 
-    - name: Build the Docker image
-      run: docker build . --file Dockerfile --tag test:$(date +%s)
+    - name: Set up Docker image tag
+      id: vars
+      run: echo "IMAGE_TAG=test:$(date +%s)" >> $GITHUB_ENV
 
+    - name: Build the Docker image
+      run: docker build . --file Dockerfile --tag $IMAGE_TAG
+      
     - name: Send Slack notification
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        IMAGE_TAG: ${{ env.IMAGE_TAG }}
       run: |
         curl -X POST -H 'Content-type: application/json' \
-        --data '{"text":"Docker build completed successfully on branch: master!"}' \
+        --data "{\"text\":\"Docker build completed successfully on branch: master! Built image tag: $IMAGE_TAG\"}" \
         $SLACK_WEBHOOK_URL
