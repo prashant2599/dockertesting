@@ -7,11 +7,18 @@ on:
 jobs:
 
   build:
-
     runs-on: ubuntu-latest
 
     steps:
     - uses: actions/checkout@v4
+
     - name: Build the Docker image
       run: docker build . --file Dockerfile --tag test:$(date +%s)
-      
+
+    - name: Send Slack notification
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+      run: |
+        curl -X POST -H 'Content-type: application/json' \
+        --data '{"text":"Docker build completed successfully on branch: master!"}' \
+        $SLACK_WEBHOOK_URL
